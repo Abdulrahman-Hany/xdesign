@@ -1,21 +1,17 @@
-
 "use client";
 
-import {
-  THEME_LIST,
-  ThemeType,
-} from "@/lib/themes";
-
+import { useInngestSubscription } from "@inngest/realtime/hooks";
+import { fetchRealtimeSubscriptionToken } from "@/app/action/realtime";
+import { THEME_LIST, ThemeType,} from "@/lib/themes";
 import { FrameType } from "@/types/project";
-
 import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+   createContext,
+   ReactNode,
+   useCallback, 
+   useContext,
+   useEffect,
+   useState,
+ } from "react";
 
  export type LoadingStatusType = 
   |"idle"
@@ -78,47 +74,88 @@ export const CanvasProvider = ({
   hasInitialData: boolean;
   projectId: string | null;
 }) => {
-  const [themeId, setThemeId] =
-    useState<string>(
-      initialThemeId ||
-        THEME_LIST[0].id
+  const [themeId, setThemeId] = useState<string>(
+      initialThemeId || THEME_LIST[0].id
     );
 
-  const [frames, setFrames] =
-    useState<FrameType[]>(
-      initialFrames
-    );
+  const [frames, setFrames] = useState<FrameType[]>(initialFrames);
+  const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
 
-  const [
-    selectedFrameId,
-    setSelectedFrameId,
-  ] = useState<string | null>(
-    null
-  );
-
-  const [
-    loadingStatus,
-    setLoadingStatus,
-  ] = useState<LoadingStatusType>(
-    // وانت شغال لو كهرت مشكله رجع الكومنت تااني في )(realetime)
+  const [loadingStatus, setLoadingStatus] = useState<LoadingStatusType>(
+    // وانت شغال لو ظهرت مشكله رجع الكومنت تااني في )(realetime)
     "idle"
     // hasInitialData ? "idle" : "running"
   );
 
-  const theme = THEME_LIST.find(
-    (t) => t.id === themeId
-  );
+  const [prevProjectId, setPrevProjectId] = useState(projectId);
+  if (projectId !== prevProjectId) {
+    setPrevProjectId(projectId);
+    setFrames(initialFrames);
+    setThemeId(initialThemeId || THEME_LIST[0].id);
+    setSelectedFrameId(null);
+  }
 
+  const theme = THEME_LIST.find((t) => t.id === themeId);
   const selectedFrame =
-    selectedFrameId &&
-    frames.length !== 0
-      ? frames.find(
-          (f) =>
-            f.id === selectedFrameId
-        ) || null
+    selectedFrameId && frames.length !== 0
+      ? frames.find((f) => f.id === selectedFrameId) || null
       : null;
 
-      //  update the loadingstate inngest realtime
+
+  //  update the loadingstate inngest realtime
+   const { freshData } = useInngestSubscription({
+      refreshToken: fetchRealtimeSubscriptionToken,
+    }); 
+
+    useEffect(() => {
+      if (!freshData || freshData.length === 0) return;
+
+      freshData.forEach((message) => {
+        const { data, topic } = message;
+
+        if (data.projectId !== projectId) return;
+
+        switch (topic) {
+          case "generation.start":
+            setLoadingStatus("running");
+            break;
+          case "analysis.start":
+            setLoadingStatus("analyzing");
+          case "analysis.complete":
+            if (data.theme) setThemeId(data.theme);
+
+            if (data.screens && data.screens.length > 0) {
+              const skeletonFrames: FrameType[] = data.screens.map((s: any) => ({
+                id: s.id,
+                title: s.name,
+                htmlContent: "",
+                isLoading: true,
+              }));
+              setFrames((prev) => [...prev, ...skeletonFrames]);
+            }
+            break;
+            case "frame.created":
+              if (data.frame) {
+                setFrames((prev) => {
+                  const newFrames = [...prev];
+                  const idx = newFrames.findIndex((f) => f.id === data.screenId);
+                  if (idx !== -1) newFrames[idx] = data.frame;
+                  else newFrames.push(data.frame);
+                  return newFrames;
+                });
+              }
+              break;
+            case "generation.complete":
+              setLoadingStatus("completed");
+              setTimeout(() => {
+                setLoadingStatus("idle");
+              }, 1000);
+              break;
+            default:
+              break;
+      }
+    });
+  }, [projectId, freshData]);
 
   // useEffect(() => {
   //   if (hasInitialData) {

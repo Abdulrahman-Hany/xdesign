@@ -4,7 +4,7 @@ import React, { useState } from "react";
 
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Spinner } from "../ui/spinner";
-import CanvasFloatingToolbar from "./canva-floating-toolbar";
+import CanvasFloatingToolbar from "./canvas-floating-toolbar";
 import { LoadingStatusType, useCanvas } from "@/context/canvas-context";
 import { cn } from "@/lib/utils";
 import { TOOL_MODE_ENUM, ToolModeType } from "@/constant/canvas";
@@ -33,7 +33,7 @@ const Canvas = ({
 
   const currentStatus = isPending
     ? "fetching"
-    : loadingStatus !== "idle" && loadingStatus !== "completed"
+    : loadingStatus !== "idle"
     ? loadingStatus
       : null;
 
@@ -44,7 +44,8 @@ const Canvas = ({
   return (
     <>
       <div className="relative w-full h-full overflow-hidden">
-        <CanvasFloatingToolbar />
+        <CanvasFloatingToolbar projectId={projectId} />
+        
         {currentStatus && <CanvasLoader status={currentStatus} />}
 
         <TransformWrapper

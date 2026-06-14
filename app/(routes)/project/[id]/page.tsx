@@ -31,8 +31,8 @@ const Page = () => {
   <div className="relative h-screen w-full flex flex-col">
     <Header projectName={project?.name} />
     <CanvasProvider
-    initialFrames={frames}
-    initialThemeId={themeId}
+    initialFrames={project?.frames}
+    initialThemeId={project?.theme}
     hasInitialData={hasInitialData}
     projectId={project?.id}
     >

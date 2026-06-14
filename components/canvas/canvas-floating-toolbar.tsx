@@ -11,15 +11,26 @@ import { parseThemeColors } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import ThemeSelector from "./theme-selector";
 import { Separator } from "../ui/separator";
+import { useGenerateDesignById, useUpdateProject } from "@/features/use-project-id";
+import { Spinner } from "../ui/spinner";
 
-const CanvasFloatingToolbar = () => {
-  const {
-    themes,
-    theme: currentTheme,
-    setTheme,
-  } = useCanvas();
+const CanvasFloatingToolbar = ({ projectId }: { projectId: string }) => {
+  const { themes, theme: currentTheme, setTheme } = useCanvas();
+  const [promptText, setPromptText] = useState<string>("");
 
-  const [promptText,setPromptText] = useState<string>("");
+  const { mutate, isPending } = useGenerateDesignById(projectId);
+
+  const update = useUpdateProject(projectId);
+
+  const handleAIGenerate = () => {
+    if (!promptText) return;
+    mutate(promptText);
+  };
+
+  const handelUpdate = () => {
+    if (!currentTheme) return;
+    update.mutate(currentTheme.id);
+  };
 
 
   return (
@@ -65,14 +76,17 @@ const CanvasFloatingToolbar = () => {
     hideSubmitBtn={true}
 />
 
-    <Button
-    className="
-       mt-2 w-full bg-linear-to-r from-purple-500 to-indigo-600
-      text-white rounded-2xl shadow-lg shadow-purple-200/50
-    cursor-pointer
-  "
->Design
-    </Button>
+      <Button
+        disabled={isPending}
+        className="
+          mt-2 w-full bg-linear-to-r from-purple-500 to-indigo-600
+          text-white rounded-2xl shadow-lg shadow-purple-200/50
+        cursor-pointer
+      "
+          onClick={handleAIGenerate}
+        >
+          {isPending ? <Spinner /> : <>Design</>}
+      </Button>
                 </PopoverContent>
             </Popover>
 
@@ -137,7 +151,15 @@ const CanvasFloatingToolbar = () => {
     variant="default"
     size="sm"
     className="rounded-full cursor-pointer"
+    onClick={handelUpdate}
   >
+    {update.isPending ? (
+      <Spinner />
+    ) : (
+      <>
+        <Save className="size-4" />
+      </>
+    )}        
     <Save className="size-4" />
     save
   </Button>
